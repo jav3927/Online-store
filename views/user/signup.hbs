@@ -1,0 +1,76 @@
+<div class="signIn-signUp">
+    <h1>Sign up</h1>
+    {{#if hasErrors}}
+        <div class="alert alert-danger">
+            {{#each messages}}
+                <p>{{this}}</p>
+            {{/each}}
+        </div>
+    {{/if}}
+    <form name="signUp-form">
+        <div class="form-group">
+            <label for="email">E-Mail</label>
+            <input type="text" id="email" name="email" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" class="form-control">
+        </div>
+        <button type="submit" id="submit" class="btn btn-primary">Sign Up</button>
+    </form>
+</div>
+<script>
+    document.title='Sign up';
+    document.getElementById("submit").addEventListener("click", function (e) {
+        e.preventDefault();
+        // получаем данные формы
+        let registerForm = document.forms["signUp-form"],
+                email = registerForm.elements["email"].value,
+                password = registerForm.elements["password"].value;
+        // сериализуем данные в json
+        let user = JSON.stringify({email: email, password: password});
+        let request = new XMLHttpRequest();
+        // посылаем запрос на адрес "/user"
+        request.open("POST", "/user/signup", false);
+        request.setRequestHeader("Content-Type", "application/json");
+        request.addEventListener("load", function () {
+            let serverResponse = JSON.parse(request.response);
+            if(serverResponse[0].errorCode == 0) {
+                localStorage.setItem('userId', serverResponse[0].id);
+                let Cart = JSON.parse(localStorage.getItem('Cart')),
+                        userId = (localStorage.getItem('userId'));
+                if(Cart){
+                    let data = JSON.stringify({userId: userId, items: Cart});
+                    let requestUnion = new XMLHttpRequest();
+                    requestUnion.open("POST", "/user/cart-union", false);
+                    requestUnion.setRequestHeader("Content-Type", "application/json");
+                    requestUnion.addEventListener("load", function () {
+                        let serverResponseUnion = JSON.parse(request.response);
+                        if(serverResponseUnion[0].errorCode == 0) {
+                            localStorage.removeItem('Cart');
+                            if(localStorage.getItem('oldUrlForCheckout')) {
+                                let oldUrl = localStorage.getItem('oldUrlForCheckout');
+                                localStorage.removeItem('oldUrlForCheckout');
+                                window.location.replace(`${oldUrl}?userId=${userId}`);
+                            } else {
+                                window.location.replace('/user/profile');
+                            }
+                        }
+                    });
+                    requestUnion.send(data);
+                } else {
+                    if(localStorage.getItem('oldUrlForCheckout')) {
+                        let oldUrl = localStorage.getItem('oldUrlForCheckout');
+                        localStorage.removeItem('oldUrlForCheckout');
+                        window.location.replace(`${oldUrl}?userId=${userId}`);
+                    } else {
+                        window.location.replace('/user/profile');
+                    }
+                }
+            } else {
+                window.location.replace('/user/signup');
+            }
+        });
+        request.send(user);
+    });
+</script>

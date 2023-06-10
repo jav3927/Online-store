@@ -1,0 +1,104 @@
+<div class="row">
+    <div class="mainSuccess">
+        <div id="success" class="alert alert-success" {{#if noMessage}}hidden{{/if}}>
+            {{ successMsg }}
+        </div>
+    </div>
+</div>
+{{# each products}}
+    <div class="row">
+        {{#each this }}
+            <div class="col-sm-6 col-md-4">
+                <div class="thumbnail" style="box-shadow: 3px 3px 3px rgba(0, 0, 0, .2); border-radius: 10px;">
+                    <a href="single-product-page?prodId={{this.Id}}">
+                        <img src="{{ this.ImagePath }}" title="Go to {{this.Title}} page." class="img-responsive">
+                    </a>
+                    <div class="caption">
+                        <h3>{{ this.Title }}</h3>
+                        <div class="clearfix">
+                            <div class="price pull-left">${{ this.Price }}</div>
+                            <button type="button" id="add-to-cart"  class="btn btn-success pull-right" onclick="addToCart('{{this.Id}}','{{this.Title}}',{{this.Price}})">
+                                <i class="fa fa-shopping-cart"></i>&nbsp;Add to shopping card
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {{/each}}
+    </div>
+{{/each}}
+{{#if noMessage}}
+{{else}}
+    <script>
+        document.getElementById("basketAmount").innerHTML = 0;
+        localStorage.removeItem('Cart');
+    </script>
+{{/if}}
+<script>
+    document.title='Main page';
+    /*for(let i=0; i<localStorage.length; i++) {
+        let key = localStorage.key(i);
+        alert(`${key}: ${localStorage.getItem(key)}`);
+        console.log(`${key}: ${localStorage.getItem(key)}`);
+    }*///TODO:раскоментить для проверки записи в сторейдж
+    function addToCart(productId, title, price){
+        if (localStorage.getItem('userId') == null) {
+            if(localStorage.getItem('Cart') == null) {
+                let Cart = {
+                    'items': [],
+                    'totalQty': 0,
+                    'totalPrice': 0
+                };
+                Cart.items.push({'prodId': productId, 'title': title, 'price': price, 'qty': 1});
+                Cart.totalQty += 1;
+                Cart.totalPrice += price;
+                localStorage.setItem('Cart', JSON.stringify(Cart));
+                document.getElementById("basketAmount").innerHTML = Cart.totalQty;
+            } else {
+                let Cart = JSON.parse(localStorage.getItem('Cart'));
+                search(Cart, productId, price).then(function (result) {
+                    if(result.searchResult == 0){
+                        Cart.items.push({'prodId': productId, 'title': title, 'price': price, 'qty': 1});
+                        Cart.totalQty += 1;
+                        Cart.totalPrice += price;
+                        localStorage.setItem('Cart', JSON.stringify(Cart));
+                    } else {
+                        localStorage.setItem('Cart', JSON.stringify(result.Cart));
+                    }
+                    document.getElementById("basketAmount").innerHTML = Cart.totalQty;
+                });
+            }
+        }
+        else {
+            let data = JSON.stringify({prodId: productId, userId: localStorage.getItem('userId')});
+            let request = new XMLHttpRequest();
+            // посылаем запрос на адрес "/user"
+            request.open("POST", "/add-to-cart", false);
+            request.setRequestHeader("Content-Type", "application/json");
+            request.addEventListener("load", function () {
+                // получаем и парсим ответ сервера
+                let serverResponse = JSON.parse(request.response);
+                if(serverResponse.errorCode == 0){
+                    document.getElementById("add-to-cart").blur();
+                    document.getElementById("basketAmount").innerHTML = +document.getElementById("basketAmount").innerHTML+1;
+                }
+            });
+            request.send(data);
+        }
+    }
+    function search(Cart, productId, price){
+        return new Promise(function(resolve, reject) {
+            let searchResult = +0;
+            for (let element of Cart.items) {
+                if(element.prodId == productId){
+                    element.qty += 1;
+                    Cart.totalQty += 1;
+                    Cart.totalPrice += price;
+                    searchResult++;
+                    break;
+                }
+            }
+            resolve({searchResult: searchResult, Cart: Cart});
+        })
+    }
+</script>

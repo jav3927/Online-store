@@ -1,0 +1,203 @@
+{{#if products}}
+    <div class="thumbnail shopping-thumb">
+    <div id="allProducts">
+        <ul style="margin-top: 15px" class="list-group">
+            {{#each products}}
+                <li style="padding: 5px 5px 5px 18px;display: flex; flex-direction: row; align-items: center"
+                    class="list-group-item" id="li-{{this.prodId}}">
+                    <strong>{{this.title}}&nbsp</strong>
+                    <span class="label label-success">${{this.price}}</span>
+                    <span id ="{{this.prodId}}" class="badge badge-pill badge-primary pull-right"
+                          style="margin-left: auto">{{this.qty}}</span>
+                    <div class="btn group pull-right">
+                        <button class="btn btn-primary btn-xs dropdown-toggle" type="button" data-toggle="dropdown">Action <span class="caret"></span></button>
+                        <ul class="dropdown-menu" style="max-width: 92px;min-width: 92px">
+                            <li><span class="dropdown-hover" onclick="RemoveOne('{{this.prodId}}','{{this.title}}',
+                                {{this.price}})">Reduce by 1</span></li>
+                            <div class="dropdown-divider"></div>
+                            <li><span class="dropdown-hover" onclick="RemoveAll('{{this.prodId}}','{{this.title}}',
+                                {{this.price}},{{this.qty}})">Remove all</span></li>
+                        </ul>
+                    </div>
+                </li>
+            {{/each}}
+        </ul>
+    </div>
+    <div class="row" id="totalId">
+        <div class="col-sm-6 col-md-6 col-md-offset-3 col-sm-offset-3">
+            <strong id="totalPrice">Total: ${{totalPrice}}</strong>
+        </div>
+    </div>
+    <hr id="hr">
+    <div class="row" id="checkoutButton">
+        <div class="col-sm-6 col-md-6 col-md-offset-3 col-sm-offset-3">
+            <button type="button" class="btn btn-success" onclick="Checkout()">Checkout</button>
+        </div>
+    </div>
+    </div>
+{{else}}
+    <div class="shoppingCartNoItems">
+        <h2>No Items in Cart</h2>
+    </div>
+{{/if}}
+<script>
+    document.title='Shopping-cart';
+    function Checkout(){
+        if (localStorage.getItem('userId') == null) {
+            localStorage.setItem('oldUrlForCheckout', '/checkout');
+            window.location.replace('/user/signin');
+        } else {
+            let userId = localStorage.getItem('userId');
+            let url = `/checkout?userId=${userId}`;
+            window.location.replace(url);
+        }
+    }
+    function RemoveOne(prodId, title, price){//дописать удаление в корзине
+        let question;
+        if(+document.getElementById(`${prodId}`).innerHTML-1 > 0)
+            question = `Are you sure that you want remove 1 ${title} from the cart? This action is irreversible.`;
+        else
+            question = `Are you sure that you want remove ${title} from the cart? This action is irreversible.`;
+        let isRemove = confirm(question);
+        if(isRemove == true){
+            let total = parseInt(document.getElementById('totalPrice').innerHTML.match(/\d+/));
+            total = total - price;
+            document.getElementById("basketAmount").innerHTML = +document.getElementById("basketAmount").innerHTML-1;
+            if(+document.getElementById(`${prodId}`).innerHTML-1 > 0){
+                document.getElementById(`${prodId}`).innerHTML = (+document.getElementById(`${prodId}`).innerHTML-1);
+                document.getElementById('totalPrice').innerHTML = `Total: $${total}`;
+                if (localStorage.getItem('userId') == null) { // удаление из localStorage
+                    let Cart = JSON.parse(localStorage.getItem('Cart'));
+                    search(Cart, prodId, price, 0).then(function (result) {
+                        if(result.Cart.totalQty == 0) {
+                            localStorage.removeItem('Cart');
+                            window.location.replace(`/shopping-cart?data=null`);
+                        } else {
+                            localStorage.setItem('Cart', JSON.stringify(result.Cart));
+                        }
+                    })
+                } else {
+                    let userId = localStorage.getItem('userId');
+                    let productData = JSON.stringify({userId: userId, productId: prodId, remove: false});
+                    let request = new XMLHttpRequest();
+                    request.open("DELETE", "/shopping-cart", false);
+                    request.setRequestHeader("Content-Type", "application/json");
+                    request.addEventListener("load", function () {
+                    });
+                    request.send(productData);
+                }
+            } else {
+                document.getElementById(`li-${prodId}`).remove();
+                document.getElementById('totalPrice').innerHTML = `Total: $${total}`;
+                if (localStorage.getItem('userId') == null) { // удаление из localStorage
+                    let Cart = JSON.parse(localStorage.getItem('Cart'));
+                    search(Cart, prodId, price, 0).then(function (result) {
+                        if(result.Cart.totalQty == 0) {
+                            localStorage.removeItem('Cart');
+                            document.getElementById(`hr`).remove();
+                            document.getElementById(`totalId`).remove();
+                            document.getElementById(`checkoutButton`).remove();
+                            document.getElementById(`allProducts`).remove();
+                            window.location.replace(`/shopping-cart?data=null`);
+                        } else {
+                            localStorage.setItem('Cart', JSON.stringify(result.Cart));
+                        }
+                    })
+                } else {
+                    let userId = localStorage.getItem('userId');//prodId, price
+                    // сериализуем данные в json
+                    let productData = JSON.stringify({userId: userId, productId: prodId, remove: true});
+                    let request = new XMLHttpRequest();
+                    // посылаем запрос на адрес "/user"
+                    request.open("DELETE", "/shopping-cart", false);
+                    request.setRequestHeader("Content-Type", "application/json");
+                    request.addEventListener("load", function () {
+                        if(total == 0) {
+                            document.getElementById(`hr`).remove();
+                            document.getElementById(`totalId`).remove();
+                            document.getElementById(`checkoutButton`).remove();
+                            document.getElementById(`allProducts`).remove();
+                            window.location.replace(`/shopping-cart?data=null`);
+                        }
+                    });
+                    request.send(productData);
+                }
+            }
+        }
+    }
+    function RemoveAll(prodId, title, price, qty){
+        let isRemove = confirm(`Are you sure that you want remove ${title} from the cart? This action is irreversible.`);
+        if(isRemove == true){
+            let total = parseInt(document.getElementById('totalPrice').innerHTML.match(/\d+/));
+            total = total - (price * qty);
+            document.getElementById("basketAmount").innerHTML = +document.getElementById("basketAmount").innerHTML-qty;
+            document.getElementById(`li-${prodId}`).remove();
+            document.getElementById('totalPrice').innerHTML = `Total: $${total}`;
+            if (localStorage.getItem('userId') == null) {
+                if (localStorage.getItem('userId') == null) {
+                    let Cart = JSON.parse(localStorage.getItem('Cart'));
+                    search(Cart, prodId, price, qty).then(function (result) {
+                        if(result.Cart.totalQty == 0) {
+                            localStorage.removeItem('Cart');
+                            document.getElementById(`hr`).remove();
+                            document.getElementById(`totalId`).remove();
+                            document.getElementById(`checkoutButton`).remove();
+                            document.getElementById(`allProducts`).remove();
+                            window.location.replace(`/shopping-cart?data=null`);
+                        } else {
+                            localStorage.setItem('Cart', JSON.stringify(result.Cart));
+                        }
+                    })
+                }
+            } else {
+                let userId = localStorage.getItem('userId');//prodId, price
+                // сериализуем данные в json
+                let productData = JSON.stringify({userId: userId, productId: prodId, remove: true});
+                let request = new XMLHttpRequest();
+                // посылаем запрос на адрес "/user"
+                request.open("DELETE", "/shopping-cart", false);
+                request.setRequestHeader("Content-Type", "application/json");
+                request.addEventListener("load", function () {
+                    if(total == 0) {
+                        document.getElementById(`hr`).remove();
+                        document.getElementById(`totalId`).remove();
+                        document.getElementById(`checkoutButton`).remove();
+                        document.getElementById(`allProducts`).remove();
+                        window.location.replace(`/shopping-cart?data=null`);
+                    }
+                });
+                request.send(productData);
+            }
+        }
+    }
+    function search(Cart, productId, price, qty){
+        return new Promise(function(resolve, reject) {
+            let counter = +0;
+            if(qty == 0){ //removeOne
+                for (let element of Cart.items) {
+                    if(element.prodId == productId){
+                        element.qty -= 1;
+                        Cart.totalQty -= 1;
+                        Cart.totalPrice -= price;
+                        if(element.qty == 0)
+                            Cart.items.splice(counter,1);
+                        break;
+                    }
+                    counter++;
+                }
+            } else { //removeAll
+                for (let element of Cart.items) {
+                    if(element.prodId == productId){
+                        element.qty = 0;
+                        Cart.totalQty -= qty;
+                        Cart.totalPrice -= price * qty;
+                        Cart.items.splice(counter,1);
+                        break;
+                    }
+                    counter++;
+                }
+            }
+            resolve({Cart: Cart});
+        })
+    }
+</script>

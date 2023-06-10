@@ -1,0 +1,81 @@
+<div class="thumbnail single-thumb">
+    <h3 style="text-align: center">{{product.Brand}}&nbsp;{{product.Title}}</h3>
+    <img src="{{product.ImagePath}}" alt="..." class="img-responsive">
+    <div class="caption">
+        <div class="price pull-left">Description:</div><br> <p class="soloDescription">{{product.Description}}</p>
+        <div class="clearfix">
+            <div class="price pull-left">Characteristics:</div><br> <p class="soloDescription">{{product.Characteristics}}</p>
+            <div class="price pull-left">Price:&nbsp;</div>${{product.Price}}<br>
+            <div class="price pull-left">Warranty period:&nbsp;</div>{{product.WarrantyPeriod}}<br>
+            <div class="single-add-to-cart" style="text-align: right">
+                <button type="button" id="add-to-cart"  class="btn btn-success"
+                        onclick="addToCart('{{product.Id}}','{{product.Title}}',{{product.Price}})">
+                    <i class="fa fa-shopping-cart"></i>&nbsp;Add to shopping card
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.title='{{product.Brand}} {{product.Title}}';
+    function addToCart(productId, title, price){
+        if (localStorage.getItem('userId') == null) {
+            if(localStorage.getItem('Cart') == null) {
+                let Cart = {
+                    'items': [],
+                    'totalQty': 0,
+                    'totalPrice': 0
+                };
+                Cart.items.push({'prodId': productId, 'title': title, 'price': price, 'qty': 1});
+                Cart.totalQty += 1;
+                Cart.totalPrice += price;
+                localStorage.setItem('Cart', JSON.stringify(Cart));
+                document.getElementById("basketAmount").innerHTML = Cart.totalQty;
+            } else {
+                let Cart = JSON.parse(localStorage.getItem('Cart'));
+                search(Cart, productId, price).then(function (result) {
+                    if(result.searchResult == 0){
+                        Cart.items.push({'prodId': productId, 'title': title, 'price': price, 'qty': 1});
+                        Cart.totalQty += 1;
+                        Cart.totalPrice += price;
+                        localStorage.setItem('Cart', JSON.stringify(Cart));
+                    } else {
+                        localStorage.setItem('Cart', JSON.stringify(result.Cart));
+                    }
+                    document.getElementById("basketAmount").innerHTML = Cart.totalQty;
+                });
+            }
+        }
+        else {
+            let data = JSON.stringify({prodId: productId, userId: localStorage.getItem('userId')});
+            let request = new XMLHttpRequest();
+            // посылаем запрос на адрес "/user"
+            request.open("POST", "/add-to-cart", false);
+            request.setRequestHeader("Content-Type", "application/json");
+            request.addEventListener("load", function () {
+                // получаем и парсим ответ сервера
+                let serverResponse = JSON.parse(request.response);
+                if(serverResponse.errorCode == 0){
+                    document.getElementById("add-to-cart").blur();
+                    document.getElementById("basketAmount").innerHTML = +document.getElementById("basketAmount").innerHTML+1;
+                }
+            });
+            request.send(data);
+        }
+    }
+    function search(Cart, productId, price){
+        return new Promise(function(resolve, reject) {
+            let searchResult = +0;
+            for (let element of Cart.items) {
+                if(element.prodId == productId){
+                    element.qty += 1;
+                    Cart.totalQty += 1;
+                    Cart.totalPrice += price;
+                    searchResult++;
+                    break;
+                }
+            }
+            resolve({searchResult: searchResult, Cart: Cart});
+        })
+    }
+</script>

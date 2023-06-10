@@ -1,0 +1,83 @@
+<div class="ownProductContainer">
+    <h1 class="checkoutH1">Order Your own product</h1>
+    <form action="/user/own-product" method="post" id="ownProduct-form">
+        <div class="inp">
+            <div style="width: 45%;margin-right: 10%">
+                <div class="form-group">
+                    <label for="name">Your Name</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
+                </div>
+            </div>
+            <div style="width: 45%;">
+                <div class="form-group">
+                    <label for="number">Phone (+375(11)-111-11-11)</label>
+                    <input type="text" id="number" name="number" class="form-control"
+                           pattern="[\+]\d{3}[\(]\d{2}[\)][\-]\d{3}[\-]\d{2}[\-]\d{2}" minlength="18" maxlength="18" required>
+                </div>
+            </div>
+        </div>
+        <hr style="margin-top: 4px; margin-bottom: 10px">
+        <div class="inp">
+            <div style="width: 45%;margin-right: 10%">
+                <div class="form-group">
+                    <label for="brand">Brand</label>
+                    <input type="text" id="brand" name="brand" class="form-control" required>
+                </div>
+            </div>
+            <div style="width: 45%;">
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" name="category" class="form-control">
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" class="form-control" required>
+            </div>
+        </div>
+        <div>
+            <div class="form-group">
+                <label for="comment">Comments(characteristics or some conditions for operator)</label>
+                <textarea class="ownProduct-textarea" id="comment" name="comment" form="ownProduct-form" rows="4"></textarea>
+            </div>
+        </div>
+        <hr>
+        <div class="inp" style="float: right">
+            <div class="form-group">
+                <input style="width: 38px; padding: 0;text-align: center" type="number" value="1" id="amount"
+                       name="amount" class="form-control" min="1" required>
+            </div>
+            <div class="form-group">
+                <button type="submit" id="submit" class="btn btn-success">Checkout</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    document.title='Order Your own product';
+    document.getElementById("submit").addEventListener("click", function (e) {
+        e.preventDefault();
+        // получаем данные формы
+        let userId = localStorage.getItem('userId'), number = document.getElementById("number").value,
+                brand = document.getElementById("brand").value, category = document.getElementById("category").value,
+                title = document.getElementById("title").value, comments = document.getElementById("comment").value,
+                name = document.getElementById("name").value, amount = document.getElementById("amount").value;
+        let ownProduct = JSON.stringify({userId: userId, name: name, number: number, brand: brand, category: category,
+            title: title, comments: comments, amount: amount});
+        let request = new XMLHttpRequest();
+        // посылаем запрос на адрес "/user"
+        request.open("POST", "/own-product", false);
+        request.setRequestHeader("Content-Type", "application/json");
+        request.addEventListener("load", function () {
+            let serverResponse = JSON.parse(request.response);
+            if(serverResponse[0].errorCode == 0) {
+                window.location.replace('/');
+            } else {
+                alert('not ok');
+            }
+        });
+        request.send(ownProduct);
+    });
+</script>
